@@ -2295,17 +2295,17 @@ if __name__ == "__main__":
     n = pypsa.Network(snakemake.input.network,
                       override_component_attrs=override_component_attrs)
 
-    path = "/home/ws/bw0928/Dokumente/pac_scenario/pac-scenarios/"
+    path = "data/PAC_assumptions/demand/"
     pac_year = "2050"
-    transport_pac = pd.read_csv(path + "outputs/demand/transport.csv",
+    transport_pac = pd.read_csv(path + "transport.csv",
                                 index_col=0)
-    agriculture_pac =  pd.read_csv(path + "outputs/demand/agriculture.csv",
+    agriculture_pac =  pd.read_csv(path + "agriculture.csv",
                                    index_col=0)
-    services_pac = pd.read_csv(path + "outputs/demand/services.csv",
+    services_pac = pd.read_csv(path + "services.csv",
                                index_col=0)
-    residential_pac = pd.read_csv(path + "outputs/demand/residential.csv",
+    residential_pac = pd.read_csv(path + "residential.csv",
                                   index_col=0)
-    industry_pac = pd.read_csv(path + "outputs/demand/industry.csv",
+    industry_pac = pd.read_csv(path + "industry.csv",
                               index_col=0)
 
     Nyears = n.snapshot_weightings.sum() / 8760.
