@@ -1238,16 +1238,22 @@ def add_transport(network):
                  suffix=" EV battery",
                  carrier="Li ion")
 
+    pypsa_load = ((1 - options['transport_fuel_cell_share']) *
+                  (transport[nodes] + shift_df(transport[nodes], 1)
+                   + shift_df(transport[nodes], 2)) / 3.)
+    # convert TWh to MWh
+    pac_load =  transport_pac.loc["electricity", pac_year] * 1e6
+
+   # caution, this adds also the shipping electrification
+    scale_factor = pac_load/pypsa_load.sum().sum()
+    load = pypsa_load * scale_factor
+
     network.madd("Load",
                  nodes,
                  suffix=" transport",
                  bus=nodes + " EV battery",
                  carrier="transport",
-                 p_set=((1 - options['transport_fuel_cell_share']) *
-                        (transport[nodes]
-                         + shift_df(transport[nodes], 1)
-                         + shift_df(transport[nodes], 2))
-                        / 3.)
+                 p_set=load
                 )
 
     # 3-phase charger with 11 kW * x% of time grid-connected
@@ -1885,6 +1891,7 @@ def add_industry(network):
     industrial_demand = 1e6 * pd.read_csv(snakemake.input.industrial_demand,
                                           index_col=0)
 
+    # solid biomass for industry -----------------------------------------
     solid_biomass_by_country = (industrial_demand["solid biomass"]
                                 .groupby(pop_layout.ct).sum())
 
@@ -1896,7 +1903,7 @@ def add_industry(network):
                  ["solid biomass for industry"],
                  bus="solid biomass for industry",
                  carrier="solid biomass for industry",
-                 p_set=solid_biomass_by_country.sum() / 8760.)
+                 p_set= industry_pac.loc['solid biomass', pac_year] * 1e6 / 8760.)
 
     network.madd("Link",
                  nodes + " solid biomass for industry",
@@ -1922,15 +1929,28 @@ def add_industry(network):
                  efficiency3=(costs.at['solid biomass', 'CO2 intensity']
                               * options["ccs_fraction"]))
 
+    # biogas for industryy
+    biogas_pac = pop_w * industry_pac.loc['biogas', pac_year] * 1e6 / 8760
+
+    network.madd("Load",
+                 nodes + " biogas",
+                 suffix=" biogas for industry",
+                 bus=nodes + " biogas",
+                 carrier="biogas for industry",
+                 p_set=biogas_pac)
+
+    # gas for industry ---------------------------------------------------
     network.madd("Bus",
                  ["gas for industry"],
                  carrier="gas for industry")
 
+    methane_pac = industry_pac.loc[['synthetic methane', 'biomethane']
+                                   , pac_year].sum() * 1e6 /8760.
     network.madd("Load",
                  ["gas for industry"],
                  bus="gas for industry",
                  carrier="gas for industry",
-                 p_set=industrial_demand.loc[nodes, "methane"].sum() / 8760.)
+                 p_set=methane_pac)
 
     network.madd("Link",
                  nodes + "gas for industry",
@@ -1958,24 +1978,36 @@ def add_industry(network):
                  efficiency3=(costs.at['gas', 'CO2 intensity']
                               * options["ccs_fraction"]))
 
+    # H2 for industry ---------------------------------------------------
+
+    h2_pac = industry_pac.loc['renewable hydrogen', pac_year] * 1e6 / 8760
+    h2_weight =  (industrial_demand.loc[nodes, "hydrogen"] /
+                  industrial_demand.loc[nodes, "hydrogen"].sum())
     network.madd("Load",
                  nodes,
                  suffix=" H2 for industry",
                  bus=nodes + " H2",
                  carrier="H2 for industry",
-                 p_set=industrial_demand.loc[nodes, "hydrogen"] / 8760.)
+                 p_set=h2_weight * h2_pac)
 
+    # H2 for shipping ---------------------------------------------------
     navigation = nodal_energy_totals.loc[nodes, ["total international navigation",
                 "total domestic navigation"]].sum(axis=1) * 1e6 / 8760.
     navigation_load = navigation * (options['shipping_average_efficiency'] /
                                     costs.at["fuel cell", "efficiency"])
+
+    weights = navigation_load / navigation_load.sum()
+    h2_pac = transport_pac.loc["renewable hydrogen", pac_year]
+    NH3_pac = transport_pac.loc["renewable  ammonia", pac_year]
+    #  ammonia should be produced from hydrogen and nitrogen
+    shipping_pac =  weights * (h2_pac + NH3_pac)*1e6/8760
 
     network.madd("Load",
                   nodes,
                   suffix=" H2 for shipping",
                   bus=nodes + " H2",
                   carrier="H2 for shipping",
-                  p_set=navigation_load)
+                  p_set=shipping_pac)
 
     network.add("Bus",
                 "Fischer-Tropsch",
@@ -2002,7 +2034,8 @@ def add_industry(network):
 
         nodes_heat = create_nodes_for_heat_sector()
 
-        for name in ["residential rural", "services rural", "residential urban decentral", "services urban decentral"]:
+        for name in ["residential rural", "services rural",
+                     "residential urban decentral", "services urban decentral"]:
             network.madd("Link",
                          nodes_heat[name] + " " + name + " oil boiler",
                          p_nom_extendable=True,
@@ -2027,24 +2060,25 @@ def add_industry(network):
                               * costs.at["Fischer-Tropsch", 'efficiency']),
                  p_nom_extendable=True)
 
-    network.madd("Load",
-                 ["naphtha for industry"],
-                 bus="Fischer-Tropsch",
-                 carrier="naphtha for industry",
-                 p_set=industrial_demand.loc[nodes, "naphtha"].sum() / 8760.)
+    # network.madd("Load",
+    #              ["naphtha for industry"],
+    #              bus="Fischer-Tropsch",
+    #              carrier="naphtha for industry",
+    #              p_set=industrial_demand.loc[nodes, "naphtha"].sum() / 8760.)
 
+    ft_pac = transport_pac.loc['liquid synthetic fuels', pac_year] * 1e6 / 8760
     network.madd("Load",
                  ["kerosene for aviation"],
                  bus="Fischer-Tropsch",
                  carrier="kerosene for aviation",
-                 p_set=navigation.sum())
+                 p_set=ft_pac)
 
     # NB: CO2 gets released again to atmosphere when plastics decay or
     # kerosene is burned except for the process emissions when naphtha is used
     # for petrochemicals, which can be captured with other industry process
     # emissions tco2 per hour
 
-    co2 = (network.loads.loc[["naphtha for industry", "kerosene for aviation"],
+    co2 = (network.loads.loc[["kerosene for aviation"],
                               "p_set"].sum()
             * costs.at["oil", 'CO2 intensity']
             - industrial_demand.loc[nodes, "process emission from feedstock"].sum()
@@ -2056,6 +2090,15 @@ def add_industry(network):
                  carrier="Fischer-Tropsch emissions",
                  p_set=-co2)
 
+    # low T heat for industry -----------------------------------------
+    heat_w = (industrial_demand.loc[nodes, "low-temperature heat"]/
+              industrial_demand.loc[nodes, "low-temperature heat"].sum())
+    # from PAC
+    industry_heat = industry_pac.loc[(industry_pac.index.str.contains("heat"))|
+                                     (industry_pac.index.str.contains("solar thermal")),
+                                     pac_year].sum()
+
+    industry_heat_w = heat_w * industry_heat * 1e6 /8760
     network.madd("Load",
                  nodes,
                  suffix=" low-temperature heat for industry",
@@ -2063,18 +2106,19 @@ def add_industry(network):
                       " urban central heat" in network.buses.index else node +
                       " services urban decentral heat" for node in nodes],
                  carrier="low-temperature heat for industry",
-                 p_set=(industrial_demand.loc[nodes, "low-temperature heat"]
-                        / 8760.))
+                 p_set=industry_heat_w)
 
+    # electricity industry ----------------------------------
+    industry_elec = pop_w * industry_pac.loc["electricity", pac_year] * 1e6 / 8760
     network.madd("Load",
                  nodes,
                  suffix=" industry new electricity",
                  bus=nodes,
                  carrier="industry new electricity",
-                 p_set=((industrial_demand.loc[nodes, "electricity"]
-                         - industrial_demand.loc[nodes, "current electricity"])
-                        / 8760.))
+                 p_set=industry_elec
+                 )
 
+    # emissions industry ---------------------------------
     network.madd("Bus",
                   ["process emissions"],
                   carrier="process emissions")
@@ -2183,7 +2227,7 @@ if __name__ == "__main__":
     #  Detect running outside of snakemake and mock snakemake for testing
     if 'snakemake' not in globals():
         from vresutils.snakemake import MockSnakemake
-        os.chdir("/home/ws/bw0928/Dokumente/pypsa-eur-sec/scripts")
+        os.chdir("/home/ws/bw0928/Dokumente/pypsa-eur-sec-PAC/scripts")
         snakemake = MockSnakemake(
             wildcards=dict(
                 network='elec',
@@ -2233,7 +2277,7 @@ if __name__ == "__main__":
                 costs='/costs/assumed_costs_{network}_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}.csv'
             )
         )
-        with open('/home/ws/bw0928/Dokumente/pypsa-eur-sec/config.yaml', encoding='utf8') as f:
+        with open('/home/ws/bw0928/Dokumente/pypsa-eur-sec-PAC/config.yaml', encoding='utf8') as f:
             snakemake.config = yaml.safe_load(f)
 
     logging.basicConfig(level=snakemake.config['logging_level'])
@@ -2251,6 +2295,19 @@ if __name__ == "__main__":
     n = pypsa.Network(snakemake.input.network,
                       override_component_attrs=override_component_attrs)
 
+    path = "/home/ws/bw0928/Dokumente/pac_scenario/pac-scenarios/"
+    pac_year = "2050"
+    transport_pac = pd.read_csv(path + "outputs/demand/transport.csv",
+                                index_col=0)
+    agriculture_pac =  pd.read_csv(path + "outputs/demand/agriculture.csv",
+                                   index_col=0)
+    services_pac = pd.read_csv(path + "outputs/demand/services.csv",
+                               index_col=0)
+    residential_pac = pd.read_csv(path + "outputs/demand/residential.csv",
+                                  index_col=0)
+    industry_pac = pd.read_csv(path + "outputs/demand/industry.csv",
+                              index_col=0)
+
     Nyears = n.snapshot_weightings.sum() / 8760.
 
     pop_layout = pd.read_csv(snakemake.input.clustered_pop_layout, index_col=0)
@@ -2261,6 +2318,7 @@ if __name__ == "__main__":
     pop_layout["fraction"] = pop_layout["total"] / pop_layout["ct_total"]
     pop_layout["urban_ct_fraction"] = pop_layout["urban"] / \
         pop_layout["ct"].map(ct_urban.get)
+    pop_w = pop_layout["total"]/pop_layout["total"].sum()
 
     costs = prepare_costs()
 
@@ -2301,6 +2359,19 @@ if __name__ == "__main__":
      transport, avail_profile, dsm_profile, co2_totals, nodal_transport_data,
      dist_heat_share) = prepare_data(n)
 
+    # add residential and service electricity demand
+    pypsa_elec = n.loads_t.p_set.loc[:, n.loads.carrier=="electricity"].sum().sum()/1e6
+    pac_elec = (residential_pac.loc["electricity", pac_year] +
+                services_pac.loc["electricity", pac_year])
+    scale_factor = pac_elec / pypsa_elec
+    n.loads_t.p_set.loc[:, n.loads.carrier=="electricity"] *= scale_factor
+
+    # assuming heat demand reduction by 70%
+    space_cols = heat_demand.columns.levels[0][
+                 heat_demand.columns.levels[0].str.contains("space")]
+    heat_demand.loc[:,space_cols] = heat_demand[space_cols] * 0.3
+
+
     if "nodistrict" in opts:
         options["central"] = False
 
@@ -2324,6 +2395,21 @@ if __name__ == "__main__":
 
     if "noH2network" in opts:
         remove_h2_network(n)
+
+    # add agriculture load weighted by population
+    # electricity
+    nodes = pop_layout.index
+    pac_agri_elec = agriculture_pac.loc["electricity", pac_year] * 1e6 / 8760
+    pac_agri_elec_w = pop_w * pac_agri_elec
+    n.loads_t.p_set[nodes] = n.loads_t.p_set[nodes].apply(lambda row: row+pac_agri_elec_w, axis=1)
+    # heat for agriculture
+    pac_agri_heat = agriculture_pac.loc[
+            (agriculture_pac.index.str.contains("heat")) &
+            ((~ agriculture_pac.index.str.contains("(delivered energy)")))
+            , pac_year].fillna(0).sum() * 1e6 / 8760
+    pac_agri_heat_w = pop_w * pac_agri_heat
+    rural_heat = n.loads.carrier=="services rural heat"
+    n.loads_t.p_set.loc[:, rural_heat] = n.loads_t.p_set.loc[:,rural_heat].apply(lambda row: row+pac_agri_heat_w, axis=1)
 
     for o in opts:
         m = re.match(r'^\d+h$', o, re.IGNORECASE)
