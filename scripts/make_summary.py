@@ -653,7 +653,7 @@ if __name__ == "__main__":
     # Detect running outside of snakemake and mock snakemake for testing
     if 'snakemake' not in globals():
         os.chdir("/home/ws/bw0928/Dokumente/pypsa-eur-sec/")
-        name = "elec_s_38_lv1.0__Co2L0-3H-T-H"
+        name = "elec_s_38_lv1.0__Co2L0-3H-T-H-B-I"
         from vresutils import Dict
         import yaml
         snakemake = Dict()
@@ -662,49 +662,14 @@ if __name__ == "__main__":
 
         # overwrite some options
         snakemake.config['results_dir'] = "results/"
-        snakemake.config["run"] = "distribution_costs"
+        snakemake.config["run"] = "PAC_2050"
         snakemake.config['scenario']['clusters'] = [38]
         snakemake.config["scenario"]["lv"] = [1.0] #, 1.125, 1.5, 1.75, 2.0, "opt"]
         snakemake.config["scenario"]["sector_opts"] = [
 
-#            "base_load_notes",
-#            "base_load_tes",
-#            "noretro_notes",
-#            "noretro_tes",
-#
-#             "fuel_cell_heat",
-#             "fuel_cell_heat_costs2050_nocentralgas",
-#             "fuel_cell_heat_noretro",
-#            "nogas_noretro_notes",
-#            "nogas_noretro_tes",
-#            "nogas_notes",
-#            "nogas_tes",
-#            "retro_notes",
-#             "woodstove_deacosts",
-#           "nogas_noretro_notes",
-            # "noretro_noimportgas",
-            # "noretro_importgas",
-            # "retro_noimportgas",
-            # "retro_importgas",
-            "DH_dist_cost",
-            "gas_dist_cost",
-            # "2solar",
-            # "retro_tes_nodecentralgas_fossil",
-            # "noretro_tes_nodecentralgas_fossil",
-            # "retro_fossilhighprice",
-           # "cheaphelmeth_nofossil",
-          # "retro_tes_nofossil",
-#           "noretro_notes",
-#           "nogas_noretro_tes",
-#           "noretro_tes",
-#           "nogas_notes",
-#           "retro_notes",
-#           "nogas_tes",
-#           "retro_tes",
 
-#            "2030_costs",
-#            "2040_costs",
-#            "2050_costs",
+            "PAC_2050",
+
 
         ]
         snakemake.input = Dict()
@@ -716,7 +681,7 @@ if __name__ == "__main__":
 
     networks_dict = {(cluster, lv, opt + sector_opt):
                      (snakemake.config['results_dir'] + snakemake.config['run']
-                     + '/postnetworks/elec_s_{}_lv{}__Co2L0-3H-T-H-B_{}.nc'.format(cluster, lv, sector_opt))
+                     + '/postnetworks/elec_s_{}_lv{}__Co2L0-3H-T-H-B-I_{}.nc'.format(cluster, lv, sector_opt))
                      .format(cluster=cluster,
                              opt=opt,
                              lv=lv,
@@ -727,10 +692,10 @@ if __name__ == "__main__":
                      for lv in snakemake.config['scenario']['lv']}
     print(networks_dict)
 
-    os.chdir("/home/ws/bw0928/Dokumente/pypsa-eur-sec/")
+    os.chdir("/home/ws/bw0928/Dokumente/pypsa-eur-sec-PAC/")
     costs_db = load_costs(
         Nyears=1.,
-        tech_costs="/home/ws/bw0928/Dokumente/pypsa-eur-sec/data/costs_old.csv",
+        tech_costs="/home/ws/bw0928/Dokumente/pypsa-eur-sec-PAC/data/costs_old.csv",
         config=snakemake.config["costs"],
         elec_config=snakemake.config['electricity'])
 

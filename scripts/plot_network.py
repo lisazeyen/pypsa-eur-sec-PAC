@@ -1,4 +1,3 @@
-
 import cartopy.crs as ccrs
 from matplotlib.legend_handler import HandlerPatch
 from matplotlib.patches import Circle, Ellipse
@@ -102,21 +101,12 @@ def assign_location(n):
             names = ifind.index[ifind == i]
 
             c.df.loc[names, 'location'] = names.str[:i]
-<<<<<<< HEAD
 
 
 # ----------------- PLOT FUNCTIONS --------------------------------------------
 def plot_map(network, components=["links", "stores", "storage_units", "generators"],
              bus_size_factor=1.7e10, transmission=False):
 
-=======
-
-
-# ----------------- PLOT FUNCTIONS --------------------------------------------
-def plot_map(network, components=["links", "stores", "storage_units", "generators"],
-             bus_size_factor=1.7e10, transmission=False):
-
->>>>>>> master
     n = network.copy()
     assign_location(n)
     # Drop non-electric buses so they don't clutter the plot
@@ -125,10 +115,7 @@ def plot_map(network, components=["links", "stores", "storage_units", "generator
     costs = pd.DataFrame(index=n.buses.index)
 
     for comp in components:
-<<<<<<< HEAD
         print(comp)
-=======
->>>>>>> master
         df_c = getattr(n, comp)
         df_c["nice_group"] = df_c.carrier.map(rename_techs_tyndp)
 
@@ -138,28 +125,15 @@ def plot_map(network, components=["links", "stores", "storage_units", "generator
                    .groupby([df_c.location, df_c.nice_group]).sum()
                    .unstack().fillna(0.))
         costs = pd.concat([costs, costs_c], axis=1)
-<<<<<<< HEAD
 
         print(comp, costs)
     costs = costs.groupby(costs.columns, axis=1).sum()
 
     costs.drop(list(costs.columns[(costs == 0.).all()]), axis=1, inplace=True)
 
-=======
-
-        print(comp, costs)
-    costs = costs.groupby(costs.columns, axis=1).sum()
-
-    costs.drop(list(costs.columns[(costs == 0.).all()]), axis=1, inplace=True)
-
->>>>>>> master
     new_columns = ((preferred_order & costs.columns)
                    .append(costs.columns.difference(preferred_order)))
     costs = costs[new_columns]
-
-    for item in new_columns:
-        if item not in snakemake.config['plotting']['tech_colors']:
-            print("Warning!",item,"not in config/plotting/tech_colors")
 
     costs = costs.stack()  # .sort_index()
 
@@ -221,10 +195,8 @@ def plot_map(network, components=["links", "stores", "storage_units", "generator
 
     n.plot(bus_sizes=costs / bus_size_factor,
            bus_colors=snakemake.config['plotting']['tech_colors'],
-           line_colors=ac_color,
-           link_colors=dc_color,
-           line_widths=line_widths / linewidth_factor,
-           link_widths=link_widths / linewidth_factor,
+           line_colors=dict(Line=ac_color, Link=dc_color),
+           line_widths=line_widths_exp / linewidth_factor,
            ax=ax,  boundaries=(-10, 30, 34, 70),
            color_geomap={'ocean': 'lightblue', 'land': "palegoldenrod"})
 
@@ -567,7 +539,7 @@ if __name__ == "__main__":
         snakemake.config['run'] = "distribution_grid"
         snakemake.wildcards = {"lv": "1.0"}  # lv1.0, lv1.25, lvopt
         name = "elec_s_48_lv{}__Co2L0-3H-T-H-B".format(snakemake.wildcards["lv"])
-        suffix = "_retro_nofossil"
+        suffix = "_2solar"
         name = name + suffix
         snakemake.input = Dict()
         snakemake.output = Dict(

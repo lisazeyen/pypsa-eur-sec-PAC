@@ -325,7 +325,7 @@ def add_co2_tracking(n):
     # TODO move maximum somewhere more transparent
     n.madd("Store", ["co2 stored"],
            e_nom_extendable=True,
-           e_nom_max=1e6,
+           e_nom_max=2e8,
            capital_cost=20.,
            # e_cyclic=True,
            carrier="co2 stored",
@@ -1496,7 +1496,7 @@ def add_heat(network):
                                                'efficiency'] * costs.at[name_type + ' resistive heater',
                                                                         'fixed'],
                          p_nom_extendable=True)
-#            if name == "urban central":
+
             network.madd("Link",
                          nodes[name] + " " + name + " gas boiler",
                          p_nom_extendable=True,
@@ -2446,5 +2446,14 @@ if __name__ == "__main__":
         add_electricity_grid_connection(n)
     if options['gas_distribution_grid']:
         insert_gas_distribution_costs(n)
+
+
+    if not options["ccs"]:
+        print("no CCS")
+        n.links = n.links[~n.links.carrier.str.contains("CCS")]
+
+    if not options["fossil_gas"]:
+        print("no fossil gas import")
+        n.generators = n.generators[n.generators.carrier!="gas"]
 
     n.export_to_netcdf(snakemake.output[0])

@@ -298,7 +298,7 @@ def plot_balances():
         fig.savefig(snakemake.output.balances[:-10] + k + ".pdf",transparent=True)
 
 
-
+# %%
 if __name__ == "__main__":
     # Detect running outside of snakemake and mock snakemake for testing
     if 'snakemake' not in globals():
@@ -309,11 +309,12 @@ if __name__ == "__main__":
             snakemake.config = yaml.safe_load(f)
         snakemake.input = Dict()
         snakemake.output = Dict()
-        snakemake.config['run'] = "distribution_costs"
+        snakemake.config['run'] = "PAC_2050"
 
         for item in ["costs", "energy", "balances"]:
             snakemake.input[item] = snakemake.config['summary_dir'] + '/{name}/csvs/{item}.csv'.format(name=snakemake.config['run'],item=item)
             snakemake.output[item] = snakemake.config['summary_dir'] + '/{name}/graphs/{item}.pdf'.format(name=snakemake.config['run'],item=item)
+        snakemake.input.balances = snakemake.config['summary_dir'] + '/{name}/csvs/supply_energy.csv'.format(name=snakemake.config['run'])
 
     plot_costs()
 
