@@ -1,0 +1,28 @@
+cluster,38
+lv,1.0
+opt,PAC_2050
+AC,70.9422614123526
+co2,-114.20410244064249
+co2 stored,-70.31111133721025
+H2,61.32917798242744
+gas,66.54436508743836
+battery,71.38955011854671
+Li ion,76.15257750815869
+residential rural heat,38.40016461107483
+residential rural water tanks,37.30441287446848
+services rural heat,10.172069613212312
+services rural water tanks,12.121672367441555
+residential urban decentral heat,47.76984701207968
+residential urban decentral water tanks,46.97794856817262
+services urban decentral heat,47.73631763580778
+services urban decentral water tanks,47.473646942030925
+urban central heat,28.308542575201816
+urban central water tanks,26.52206638091696
+biogas,80.4142100217631
+solid biomass,25.25507169661868
+solid biomass for industry,25.21966187101732
+gas for industry,88.85301464270908
+Fischer-Tropsch,50.010054035853834
+process emissions,-106.45406161289203
+low voltage,76.35562151127405
+home battery,76.31986896612659

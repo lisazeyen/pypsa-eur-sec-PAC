@@ -1,0 +1,68 @@
+cluster,,38
+lv,,1.0
+opt,,PAC_2050
+lines,AC,0.0
+links,BEV charger,-131666666.89081454
+links,DAC,0.0
+links,DC,0.0
+links,Fischer-Tropsch,-34974081.382704794
+links,H2 Electrolysis,-415345301.96449614
+links,H2 Fuel Cell,-3156908.97024747
+links,H2 pipeline,0.0
+links,OCGT,-50386148.68863441
+links,SMR,-31.88860304318881
+links,SMR CCS,-58.27002137716822
+links,Sabatier,-24789333.064540185
+links,battery charger,-5948061.005256176
+links,battery discharger,-5827886.380935192
+links,biogas to gas,-70422222.25755872
+links,co2 vent,0.0
+links,electricity distribution grid,0.0
+links,gas for industry,24199487.504134208
+links,gas for industry CCS,284.83810450714134
+links,gas pipeline,0.0
+links,helmeth,-41382740.07727794
+links,home battery charger,-64206.424573982134
+links,home battery discharger,-62909.198200637475
+links,process emissions,0.0
+links,process emissions CCS,-5.364418029785156e-07
+links,residential rural gas boiler,2180568.3785899025
+links,residential rural ground heat pump,191405005.4688821
+links,residential rural micro gas CHP,37.0817559937607
+links,residential rural resistive heater,-1314374.8157073818
+links,residential rural water tanks charger,-4001379.936388038
+links,residential rural water tanks discharger,-2931532.0621837154
+links,residential urban decentral air heat pump,331058035.90647936
+links,residential urban decentral gas boiler,28163303.68550436
+links,residential urban decentral micro gas CHP,39.507883945611944
+links,residential urban decentral resistive heater,-15857282.577192158
+links,residential urban decentral water tanks charger,-13509587.656628639
+links,residential urban decentral water tanks discharger,-9405205.508557819
+links,services rural gas boiler,52.79379993723464
+links,services rural ground heat pump,756.5933485738032
+links,services rural micro gas CHP,31.05846010140251
+links,services rural resistive heater,-214.80757315982237
+links,services rural water tanks charger,-1646.8549106154678
+links,services rural water tanks discharger,-1296.3335782227869
+links,services urban decentral air heat pump,122881077.95828213
+links,services urban decentral gas boiler,11655417.217067754
+links,services urban decentral micro gas CHP,39.49069868554063
+links,services urban decentral resistive heater,-6385627.642268918
+links,services urban decentral water tanks charger,-5224156.65918529
+links,services urban decentral water tanks discharger,-3621824.814117361
+links,solid biomass for industry,0.0
+links,solid biomass for industry CCS,-11243.70094006239
+links,solid biomass transport,0.0
+links,urban central air heat pump,15494139.280195352
+links,urban central gas CHP CCS electric,-872.5444330613684
+links,urban central gas CHP CCS heat,441.9860404346321
+links,urban central gas CHP electric,-6508634.075743843
+links,urban central gas CHP heat,6894883.246213012
+links,urban central gas boiler,126.3876582489203
+links,urban central resistive heater,-2674508.736624658
+links,urban central solid biomass CHP CCS electric,-288602172.0578402
+links,urban central solid biomass CHP CCS heat,37154770.010242455
+links,urban central solid biomass CHP electric,-7129.442717087477
+links,urban central solid biomass CHP heat,947.84853717474
+links,urban central water tanks charger,-28800096.58176419
+links,urban central water tanks discharger,-22303979.571900338

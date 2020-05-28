@@ -1,0 +1,29 @@
+cluster,38
+lv,1.0
+opt,PAC_2050
+DC,24.506819575368922
+H2 Electrolysis,22.116506056713483
+H2 Fuel Cell,187.81908502567939
+OCGT,301.5901535587178
+battery charger,35.34215427221761
+battery discharger,80.5404615928372
+electricity distribution grid,72.35450500152497
+helmeth,30.30291337364527
+offwind-ac,52.88172093460416
+offwind-dc,56.59138417164847
+onwind,42.07110768441376
+residential rural micro gas CHP,89.1951287830031
+residential rural resistive heater,79.29961312139406
+residential urban decentral micro gas CHP,89.67808504610649
+residential urban decentral resistive heater,52.76478798351264
+ror,57.60988601507704
+services rural micro gas CHP,83.14034384398629
+services rural resistive heater,11.825258725410379
+services urban decentral micro gas CHP,89.70109363450936
+services urban decentral resistive heater,54.121660962341636
+solar,31.756011659792907
+urban central gas CHP CCS electric,164.92249002581732
+urban central gas CHP electric,254.40136394653805
+urban central resistive heater,18.356861306243722
+urban central solid biomass CHP CCS electric,129.98432929978202
+urban central solid biomass CHP electric,131.0646689069557
