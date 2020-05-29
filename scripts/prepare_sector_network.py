@@ -1242,11 +1242,14 @@ def add_transport(network):
                   (transport[nodes] + shift_df(transport[nodes], 1)
                    + shift_df(transport[nodes], 2)) / 3.)
     # convert TWh to MWh
-    pac_load =  transport_pac.loc["electricity", pac_year] * 1e6
+    pac_load =  transport_pac.loc[["electricity", "renewable hydrogen"],
+                                  pac_year][['freight\n(trucks, train)',
+       'passengers\n(motorbikes, cars, vans, buses, train)']] * 1e6
 
-   # caution, this adds also the shipping electrification
-    scale_factor = pac_load/pypsa_load.sum().sum()
+   # periodic demand for passenger and freight
+    scale_factor = pac_load.sum().sum()/pypsa_load.sum().sum()
     load = pypsa_load * scale_factor
+    options['transport_fuel_cell_share'] = pac_load.loc["renewable hydrogen"].sum() / pac_load.loc["electricity"].sum()
 
     network.madd("Load",
                  nodes,
@@ -1311,6 +1314,26 @@ def add_transport(network):
                      carrier="transport fuel cell",
                      p_set=options['transport_fuel_cell_share'] / costs.at["fuel cell",
                                                                            "efficiency"] * transport[nodes])
+
+    # add electricity demand for aviation and shipping as constant load
+    load_others = transport_pac.loc["electricity", pac_year][['aviation',
+                                                              'shipping']].sum() * 1e6
+    # weight electricity demand for aviation and shipping by total aviation
+    aviation_w = nodal_energy_totals[['total aviation passenger',
+                                      'total aviation freight']].sum(axis=1)
+    aviation_w /= aviation_w.sum()
+
+    load_w = aviation_w * load_others / 8760
+
+    network.madd("Load",
+                 nodes,
+                 suffix=" transport aviation+shipping",
+                 bus=nodes,
+                 carrier="transport",
+                 p_set=load_w
+                 )
+
+
 
 
 def add_heat(network):
@@ -1497,6 +1520,8 @@ def add_heat(network):
                                                                         'fixed'],
                          p_nom_extendable=True)
 
+        if options["gas boilers"]:
+
             network.madd("Link",
                          nodes[name] + " " + name + " gas boiler",
                          p_nom_extendable=True,
@@ -1513,18 +1538,21 @@ def add_heat(network):
                                                                         'fixed'])
 
         if options["solar_thermal"]:
+            # assumption add fixed capacities from PAC for solar thermal
+            # in urban central areas
+            if name == "urban central":
 
-            network.add("Carrier", name + " solar thermal")
+                network.add("Carrier", name + " solar thermal")
 
-            network.madd("Generator",
-                         nodes[name],
-                         suffix=" " + name + " solar thermal collector",
-                         bus=nodes[name] + " " + name + " heat",
-                         carrier=name + " solar thermal",
-                         p_nom_extendable=True,
-                         capital_cost=costs.at[name_type + ' solar thermal',
-                                               'fixed'],
-                         p_max_pu=solar_thermal[nodes[name]])
+                network.madd("Generator",
+                             nodes[name],
+                             suffix=" " + name + " solar thermal collector",
+                             bus=nodes[name] + " " + name + " heat",
+                             carrier=name + " solar thermal",
+                             p_nom = caps_PAC["solar thermal"],
+                             capital_cost=costs.at[name_type + ' solar thermal',
+                                                   'fixed'],
+                             p_max_pu=solar_thermal[nodes[name]])
 
         if options["chp"]:
 
@@ -1537,6 +1565,7 @@ def add_heat(network):
                              bus2="co2 atmosphere",
                              carrier="urban central gas CHP electric",
                              p_nom_extendable=True,
+                             p_nom_max=caps_PAC["gas CHP"],
                              capital_cost=(costs.at['central gas CHP', 'fixed']
                                            * costs.at['central gas CHP', 'efficiency']),
                              marginal_cost=costs.at['central gas CHP', 'VOM'],
@@ -1553,6 +1582,7 @@ def add_heat(network):
                              bus2="co2 atmosphere",
                              carrier="urban central gas CHP heat",
                              p_nom_extendable=True,
+                             p_nom_max=caps_PAC["gas CHP"],
                              marginal_cost=costs.at['central gas CHP',
                                                     'VOM'],
                              efficiency=(costs.at['central gas CHP',
@@ -1568,6 +1598,7 @@ def add_heat(network):
                              bus3="co2 stored",
                              carrier="urban central gas CHP CCS electric",
                              p_nom_extendable=True,
+                             p_nom_max=caps_PAC["gas CHP"],
                              capital_cost=(costs.at['central gas CHP CCS', 'fixed']
                                            * costs.at['central gas CHP CCS', 'efficiency']),
                              marginal_cost=costs.at['central gas CHP CCS', 'VOM'],
@@ -1586,6 +1617,7 @@ def add_heat(network):
                              bus3="co2 stored",
                              carrier="urban central gas CHP CCS heat",
                              p_nom_extendable=True,
+                             p_nom_max=caps_PAC["gas CHP"],
                              marginal_cost=costs.at['central gas CHP CCS',
                                                     'VOM'],
                              efficiency=(costs.at['central gas CHP CCS',
@@ -1817,7 +1849,7 @@ def add_biomass(network):
 
     # AC buses with district heating
     urban_central = n.buses.index[n.buses.carrier == "urban central heat"]
-    if not urban_central.empty and options["chp"]:
+    if not urban_central.empty and options["solid biomass CHP"]:
         urban_central = urban_central.str[:-len(" urban central heat")]
 
         network.madd("Link",
@@ -1997,10 +2029,10 @@ def add_industry(network):
                                     costs.at["fuel cell", "efficiency"])
 
     weights = navigation_load / navigation_load.sum()
-    h2_pac = transport_pac.loc["renewable hydrogen", pac_year]
-    NH3_pac = transport_pac.loc["renewable  ammonia", pac_year]
+    h2_pac = transport_pac.loc["renewable hydrogen", (pac_year, "shipping")]
+    NH3_pac = transport_pac.loc['renewable ammonia', (pac_year, "shipping")]
     #  ammonia should be produced from hydrogen and nitrogen
-    shipping_pac =  weights * (h2_pac + NH3_pac)*1e6/8760
+    shipping_pac =  weights * (h2_pac + NH3_pac) * 1e6 / 8760
 
     network.madd("Load",
                   nodes,
@@ -2066,7 +2098,7 @@ def add_industry(network):
     #              carrier="naphtha for industry",
     #              p_set=industrial_demand.loc[nodes, "naphtha"].sum() / 8760.)
 
-    ft_pac = transport_pac.loc['liquid synthetic fuels', pac_year] * 1e6 / 8760
+    ft_pac = transport_pac.loc['liquid synthetic fuels', pac_year].sum() * 1e6 / 8760
     network.madd("Load",
                  ["kerosene for aviation"],
                  bus="Fischer-Tropsch",
@@ -2222,6 +2254,27 @@ def remove_h2_network(n):
            capital_cost=h2_capital_cost)
 
 
+def add_agriculture(n):
+    """ add agriculture load weighted by population """
+
+    # electricity
+    nodes = pop_layout.index
+    pac_agri_elec = agriculture_pac.loc["electricity", pac_year] * 1e6 / 8760
+    pac_agri_elec_w = pop_w * pac_agri_elec
+    n.loads_t.p_set[nodes] = n.loads_t.p_set[nodes].apply(lambda row: row+pac_agri_elec_w, axis=1)
+
+    # heat for agriculture
+    pac_agri_heat = agriculture_pac.loc[
+            (agriculture_pac.index.str.contains("heat")) &
+            ((~ agriculture_pac.index.str.contains("(delivered energy)")))
+            , pac_year].fillna(0).sum() * 1e6 / 8760
+    pac_agri_heat_w = pop_w * pac_agri_heat
+    rural_heat = n.loads.carrier=="services rural heat"
+    n.loads_t.p_set.loc[:, rural_heat] = (n.loads_t.p_set.loc[: , rural_heat]
+                                          .apply(lambda row: row+pac_agri_heat_w,
+                                                 axis=1))
+
+
 # %%
 if __name__ == "__main__":
     #  Detect running outside of snakemake and mock snakemake for testing
@@ -2295,19 +2348,6 @@ if __name__ == "__main__":
     n = pypsa.Network(snakemake.input.network,
                       override_component_attrs=override_component_attrs)
 
-    path = "data/PAC_assumptions/demand/"
-    pac_year = "2050"
-    transport_pac = pd.read_csv(path + "transport.csv",
-                                index_col=0)
-    agriculture_pac =  pd.read_csv(path + "agriculture.csv",
-                                   index_col=0)
-    services_pac = pd.read_csv(path + "services.csv",
-                               index_col=0)
-    residential_pac = pd.read_csv(path + "residential.csv",
-                                  index_col=0)
-    industry_pac = pd.read_csv(path + "industry.csv",
-                              index_col=0)
-
     Nyears = n.snapshot_weightings.sum() / 8760.
 
     pop_layout = pd.read_csv(snakemake.input.clustered_pop_layout, index_col=0)
@@ -2320,6 +2360,47 @@ if __name__ == "__main__":
         pop_layout["ct"].map(ct_urban.get)
     pop_w = pop_layout["total"]/pop_layout["total"].sum()
 
+   # ------------ demand PAC ---------------------------------
+    path = "data/PAC_assumptions/demand/"
+    pac_year = "2050"
+    transport_pac = pd.read_csv(path + "transport_sectors_TWh.csv",
+                                index_col=[0], header=[0,1])
+    agriculture_pac =  pd.read_csv(path + "agriculture.csv",
+                                   index_col=0)
+    services_pac = pd.read_csv(path + "services.csv",
+                               index_col=0)
+    residential_pac = pd.read_csv(path + "residential.csv",
+                                  index_col=0)
+    industry_pac = pd.read_csv(path + "industry.csv",
+                              index_col=0)
+
+    # ------------ supply PAC installed capacities -----------
+    path = "data/PAC_assumptions/supply/installed_capacity_MW/"
+    map_pypsa_names = {"onwind": "Wind onshore",
+                       "offwind": "Wind offshore",
+                       "solar": "Solar PV",
+                       "solar thermal": "Solar thermal (CSP)",
+                       "gas CHP": "Biogas CHP"}
+    caps_PAC = {}
+    for carrier in map_pypsa_names.keys():
+        cap = pd.read_csv(path + "{}.csv".format(map_pypsa_names[carrier]),
+                          index_col=0)[pac_year]
+        cap = (pop_layout.ct.map(cap) * pop_layout.fraction).fillna(0)
+        caps_PAC[carrier] = cap
+
+    # ----------------restrict p_nom_max----------------------------
+    carriers = ["solar", "onwind", "offwind"]
+    for carrier in carriers:
+        gens_carrier = n.generators.carrier.str.contains(carrier)
+        n.generators.loc[gens_carrier, "p_nom_max"] = n.generators.loc[gens_carrier,
+                                                                       "bus"].map(caps_PAC[carrier])
+    # extra constraints for PL, DE ac dc offwind
+    n.generators.loc[((n.generators.index.str[:2].isin(["DE", "PL"])) &
+                 (n.generators.carrier=="offwind-ac")), "p_nom_max"] *= 0.8
+    n.generators.loc[((n.generators.index.str[:2].isin(["DE", "PL"])) &
+                 (n.generators.carrier=="offwind-dc")), "p_nom_max"] *= 0.2
+
+
     costs = prepare_costs()
 
     remove_elec_base_techs(n)
@@ -2329,9 +2410,6 @@ if __name__ == "__main__":
     if not options["costs_old"]:
         # update old pypsa-eur costs with new costs
         update_elec_costs(n, costs)
-
-    # TODO
-    costs.at['solid biomass', 'CO2 intensity'] = 0.3
 
     add_co2_tracking(n)
 
@@ -2366,10 +2444,15 @@ if __name__ == "__main__":
     scale_factor = pac_elec / pypsa_elec
     n.loads_t.p_set.loc[:, n.loads.carrier=="electricity"] *= scale_factor
 
-    # assuming heat demand reduction by 70%
+    # assuming space heat demand reduction by 70%
     space_cols = heat_demand.columns.levels[0][
                  heat_demand.columns.levels[0].str.contains("space")]
     heat_demand.loc[:,space_cols] = heat_demand[space_cols] * 0.3
+
+    # assuming heat demand reduction for water of 50%
+    water_cols = heat_demand.columns.levels[0][
+                 heat_demand.columns.levels[0].str.contains("water")]
+    heat_demand.loc[:,water_cols] = heat_demand[water_cols] * 0.5
 
 
     if "nodistrict" in opts:
@@ -2396,20 +2479,7 @@ if __name__ == "__main__":
     if "noH2network" in opts:
         remove_h2_network(n)
 
-    # add agriculture load weighted by population
-    # electricity
-    nodes = pop_layout.index
-    pac_agri_elec = agriculture_pac.loc["electricity", pac_year] * 1e6 / 8760
-    pac_agri_elec_w = pop_w * pac_agri_elec
-    n.loads_t.p_set[nodes] = n.loads_t.p_set[nodes].apply(lambda row: row+pac_agri_elec_w, axis=1)
-    # heat for agriculture
-    pac_agri_heat = agriculture_pac.loc[
-            (agriculture_pac.index.str.contains("heat")) &
-            ((~ agriculture_pac.index.str.contains("(delivered energy)")))
-            , pac_year].fillna(0).sum() * 1e6 / 8760
-    pac_agri_heat_w = pop_w * pac_agri_heat
-    rural_heat = n.loads.carrier=="services rural heat"
-    n.loads_t.p_set.loc[:, rural_heat] = n.loads_t.p_set.loc[:,rural_heat].apply(lambda row: row+pac_agri_heat_w, axis=1)
+    add_agriculture(n)
 
     for o in opts:
         m = re.match(r'^\d+h$', o, re.IGNORECASE)

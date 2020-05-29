@@ -20,7 +20,7 @@ biomethane heat (delivered energy),0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0
 biogas heat (delivered energy),3.0,3.0,2.0,1.0,1.0,0.0,0.0,0.0
 solar thermal,0.0,1.0,6.0,8.0,10.0,10.0,10.0,10.0
 geothermal heat,0.0,3.0,8.0,14.0,16.0,19.0,19.0,19.0
-aero/geothermal heat captured by heat pumps,0.0,2.0,34.0,65.0,87.0,116.0,99.0,84.0
+ambient heat captured by heat pumps,0.0,2.0,34.0,65.0,87.0,116.0,99.0,84.0
 industrial excess heat recovery,0.0,7.0,24.0,48.0,83.0,104.0,100.0,92.0
 municipal solid waste (non-renewable),14.0,11.0,8.0,6.0,3.0,0.0,0.0,0.0
 municipal solid waste (renewable),11.0,8.0,6.0,4.0,2.0,0.0,0.0,0.0

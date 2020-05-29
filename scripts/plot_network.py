@@ -530,16 +530,16 @@ def plot_series(network, carrier="AC", name="test"):
 if __name__ == "__main__":
     # Detect running outside of snakemake and mock snakemake for testing
     if 'snakemake' not in globals():
-        os.chdir("/home/ws/bw0928/Dokumente/pypsa-eur-sec/")
+        os.chdir("/home/ws/bw0928/Dokumente/pypsa-eur-sec-PAC/")
         from vresutils import Dict
         import yaml
         snakemake = Dict()
         with open('config.yaml') as f:
             snakemake.config = yaml.safe_load(f)
-        snakemake.config['run'] = "distribution_grid"
+        snakemake.config['run'] = "PAC_2050"
         snakemake.wildcards = {"lv": "1.0"}  # lv1.0, lv1.25, lvopt
-        name = "elec_s_48_lv{}__Co2L0-3H-T-H-B".format(snakemake.wildcards["lv"])
-        suffix = "_2solar"
+        name = "elec_s_38_lv{}__Co2L0-3H-T-H-B-I".format(snakemake.wildcards["lv"])
+        suffix = "_PAC_2050"
         name = name + suffix
         snakemake.input = Dict()
         snakemake.output = Dict(
